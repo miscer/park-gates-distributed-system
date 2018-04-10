@@ -18,10 +18,11 @@ class Network:
         thread.start()
     
     def accept_connections(self, server):
-        connection, address = server.accept()
-        
-        thread = Thread(target=self.receive_messages, args=(connection,))
-        thread.start()
+        while True:
+            connection, address = server.accept()
+            
+            thread = Thread(target=self.receive_messages, args=(connection,))
+            thread.start()
     
     def receive_messages(self, connection):
         while True:

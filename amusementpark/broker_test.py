@@ -1,9 +1,11 @@
 from unittest.mock import Mock
 from amusementpark.broker import Broker
+from amusementpark.messages import NetworkMessage, LocalMessage
 
 def test_passing_messages():
-    in_message_1 = Mock()
-    in_message_2 = Mock()
+    in_message_1 = Mock(NetworkMessage)
+    in_message_1.sender = 100
+    in_message_2 = Mock(LocalMessage)
 
     out_message_1 = Mock()
     out_message_1.recipient = 100
@@ -15,7 +17,7 @@ def test_passing_messages():
     node = Mock()
     node.process_message.side_effect = [
         [out_message_1, out_message_2],
-        [out_message_3]
+        [out_message_3],
     ]
 
     broker = Broker()

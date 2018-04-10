@@ -2,6 +2,7 @@ from queue import Queue
 from threading import Thread
 from collections import defaultdict
 import logging
+from amusementpark.messages import NetworkMessage, LocalMessage
 
 log = logging.getLogger('amusementpark.broker')
 
@@ -24,11 +25,11 @@ class Broker:
             if incoming_message == Broker.END:
                 break
             
-            log.info('Receive from %s: %s', incoming_message.sender, incoming_message)
+            self.log_incoming_message(incoming_message)
             
             for outgoing_message in node.process_message(incoming_message):
                 recipient = outgoing_message.recipient
-                log.info('Send to %s: %s', recipient, outgoing_message)
+                self.log_outgoing_message(outgoing_message)
                 self.outgoing_messages[recipient].put(outgoing_message)
     
     def add_incoming_message(self, message):
@@ -36,3 +37,15 @@ class Broker:
     
     def get_outgoing_messages(self, recipient):
         return self.outgoing_messages[recipient]
+    
+    def log_incoming_message(self, message):
+        if isinstance(message, LocalMessage):
+            log.info('Receive local message: %s', message)
+        elif isinstance(message, NetworkMessage):
+            log.info('Receive from %s: %s', message.sender, message)
+    
+    def log_outgoing_message(self, message):
+        if isinstance(message, LocalMessage):
+            log.info('Send message: %s', message)
+        elif isinstance(message, NetworkMessage):
+            log.info('Send to %s: %s', message.sender, message)

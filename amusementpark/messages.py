@@ -21,4 +21,6 @@ class NetworkMessage(Message):
         return super().__eq__(other) and \
             self.sender == other.sender and \
             self.recipient == other.recipient
-    
+
+class LocalMessage(Message):
+    pass
