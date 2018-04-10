@@ -8,6 +8,9 @@ class Message:
             self.type == other.type and \
             self.payload == other.payload
 
+    def __str__(self):
+        return '%s %s' % (self.type, self.payload)
+
 class NetworkMessage(Message):
     def __init__(self, message_type, sender, recipient, **payload):
         super().__init__(message_type, **payload)
@@ -18,3 +21,4 @@ class NetworkMessage(Message):
         return super().__eq__(other) and \
             self.sender == other.sender and \
             self.recipient == other.recipient
+    
