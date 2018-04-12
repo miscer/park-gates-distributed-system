@@ -22,7 +22,7 @@ nodes = {
 }
 
 node_ids = dict(zip(nodes.keys(), random.sample(range(100, 1000), k=len(nodes))))
-node_ports = dict(zip(nodes.keys(), range(8001, 8001 + len(nodes))))
+node_ports = dict(zip(nodes.keys(), range(7001, 7001 + len(nodes))))
 
 running = {}
 
@@ -53,6 +53,6 @@ for name in nodes.keys():
     
     broker.run(node)
 
-for node, broker, network in running.values():
-    message = LocalMessage('say_hello')
-    broker.add_incoming_message(message)
+node, broker, network = random.choice(list(running.values()))
+message = LocalMessage('start_election')
+broker.add_incoming_message(message)
