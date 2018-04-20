@@ -6,9 +6,10 @@ class GateNode:
     STATE_ELECTING = 'electing'
     STATE_WAITING = 'waiting'
 
-    def __init__(self, info, neighbours):
+    def __init__(self, info, neighbours, repository):
         self.info = info
         self.neighbours = neighbours
+        self.repository = repository
 
         self.state = GateNode.STATE_IDLE
         self.parent = None
