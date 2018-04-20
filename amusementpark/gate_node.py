@@ -18,6 +18,9 @@ class GateNode:
 
         self.mutex_holder = None
         self.mutex_queue = []
+
+        self.mutex_requested = False
+        self.enter_queue = []
     
     def process_message(self, message):
         if message.type == 'say_hello':
@@ -36,6 +39,10 @@ class GateNode:
             yield from self.process_mutex_requested(message)
         elif message.type == 'mutex_released':
             yield from self.process_mutex_released(message)
+        elif message.type == 'enter_request':
+            yield from self.process_enter_request(message)
+        elif message.type == 'mutex_granted':
+            yield from self.process_mutex_granted(message)
     
     def say_hello(self):
         for neighbour in self.neighbours:
@@ -121,6 +128,31 @@ class GateNode:
             yield NetworkMessage('mutex_granted', self.info, self.mutex_holder)
         else:
             self.mutex_holder = None
+    
+    def process_enter_request(self, message):
+        if not self.mutex_requested:
+            yield NetworkMessage('mutex_requested', self.info, self.leader)
+            self.mutex_requested = True
+        
+        self.enter_queue.append(message.sender)
+    
+    def process_mutex_granted(self, message):
+        if not self.mutex_requested:
+            raise Exception('Mutex not requested')
+        
+        state = self.repository.read_state()
+        
+        for entering_node in self.enter_queue:
+            try:
+                state.enter(entering_node.id)
+                yield NetworkMessage('enter_response', self.info, entering_node, allowed=True)
+            except AssertionError:
+                yield NetworkMessage('enter_response', self.info, entering_node, allowed=False)
+        
+        self.repository.write_state(state)
+        self.enter_queue = []
+        
+        yield NetworkMessage('mutex_released', self.info, self.leader)
 
     def get_children(self):
         if self.state == GateNode.STATE_INITIATED:

@@ -2,7 +2,7 @@ import pytest
 from amusementpark.gate_node import GateNode
 from amusementpark.messages import NetworkMessage, LocalMessage
 from amusementpark.node_info import NodeInfo
-from amusementpark.visitor_repository import Repository
+from amusementpark.visitor_repository import Repository, State
 
 nodes = [
     NodeInfo(100, 1, 4),
@@ -125,3 +125,22 @@ def test_request_mutex(visitor_repository):
     assert list(node.process_message(NetworkMessage('mutex_released', nodes[3], nodes[0]))) == []
     assert node.mutex_holder is None
     assert node.mutex_queue == []
+
+def test_enter_request(visitor_repository):
+    visitor_repository.write_state(State(capacity=1, visitors=[]))
+
+    node = GateNode(nodes[0], [], visitor_repository)
+    node.leader = nodes[1]
+
+    assert list(node.process_message(NetworkMessage('enter_request', nodes[2], nodes[0]))) == \
+        [NetworkMessage('mutex_requested', nodes[0], nodes[1])]
+    assert node.enter_queue == [nodes[2]]
+
+    assert list(node.process_message(NetworkMessage('enter_request', nodes[3], nodes[0]))) == []
+    assert node.enter_queue == [nodes[2], nodes[3]]
+
+    assert list(node.process_message(NetworkMessage('mutex_granted', nodes[1], nodes[0]))) == \
+        [NetworkMessage('enter_response', nodes[0], nodes[2], allowed=True),
+            NetworkMessage('enter_response', nodes[0], nodes[3], allowed=False),
+            NetworkMessage('mutex_released', nodes[0], nodes[1])]
+    assert node.enter_queue == []

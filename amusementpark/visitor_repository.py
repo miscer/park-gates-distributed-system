@@ -2,7 +2,21 @@ import os
 import json
 import collections
 
-State = collections.namedtuple('State', 'capacity visitors')
+class State:
+    def __init__(self, capacity, visitors):
+        self.capacity = capacity
+        self.visitors = visitors
+    
+    def enter(self, visitor):
+        assert visitor not in self.visitors
+        assert len(self.visitors) < self.capacity
+        self.visitors.append(visitor)
+    
+    def __eq__(self, other):
+        if isinstance(other, State):
+            return self.capacity == other.capacity and self.visitors == other.visitors
+        else:
+            return super().__eq__(other)
 
 class Repository:
     def __init__(self, filename):
@@ -18,7 +32,7 @@ class Repository:
 
     def write_state(self, state):
         with open(self.filename, 'w') as file:
-            data = state._asdict()
+            data = {'capacity': state.capacity, 'visitors': state.visitors}
             json.dump(data, file)
 
     def delete_state(self):
