@@ -1,79 +1,89 @@
 from amusementpark.gate_node import GateNode
 from amusementpark.messages import NetworkMessage, LocalMessage
+from amusementpark.node_info import NodeInfo
+
+nodes = [
+    NodeInfo(100, 1),
+    NodeInfo(200, 2),
+    NodeInfo(300, 3),
+    NodeInfo(400, 4),
+    NodeInfo(800, 8),
+    NodeInfo(900, 9),
+]
 
 def test_hello():
-    node = GateNode(100, [200, 300])
+    node = GateNode(nodes[0], [nodes[1], nodes[2]])
 
     assert list(node.process_message(LocalMessage('say_hello'))) == \
-        [NetworkMessage('hello', 100, 200), NetworkMessage('hello', 100, 300)]
+        [NetworkMessage('hello', nodes[0], nodes[1]), NetworkMessage('hello', nodes[0], nodes[2])]
     
-    assert list(node.process_message(NetworkMessage('hello', 200, 100))) == \
-        [NetworkMessage('hey', 100, 200)]
+    assert list(node.process_message(NetworkMessage('hello', nodes[1], nodes[0]))) == \
+        [NetworkMessage('hey', nodes[0], nodes[1])]
 
 def test_start_election():
-    node = GateNode(100, [200, 300])
+    node = GateNode(nodes[0], [nodes[1], nodes[2]])
 
     assert list(node.process_message(LocalMessage('start_election'))) == \
-        [NetworkMessage('election_started', 100, 200), NetworkMessage('election_started', 100, 300)]
+        [NetworkMessage('election_started', nodes[0], nodes[1]), NetworkMessage('election_started', nodes[0], nodes[2])]
     
     assert node.state == GateNode.STATE_INITIATED
 
 def test_first_election_message():
-    node = GateNode(100, [200, 300, 400])
+    node = GateNode(nodes[0], [nodes[1], nodes[2], nodes[3]])
 
-    assert list(node.process_message(NetworkMessage('election_started', 200, 100))) == \
-        [NetworkMessage('election_started', 100, 300), NetworkMessage('election_started', 100, 400)]
+    assert list(node.process_message(NetworkMessage('election_started', nodes[1], nodes[0]))) == \
+        [NetworkMessage('election_started', nodes[0], nodes[2]), NetworkMessage('election_started', nodes[0], nodes[3])]
     
     assert node.state == GateNode.STATE_ELECTING
-    assert node.parent_id == 200
+    assert node.parent == nodes[1]
 
 def test_another_election_message():
-    node = GateNode(100, [200, 300, 400])
+    node = GateNode(nodes[0], [nodes[1], nodes[2], nodes[3]])
     node.state = GateNode.STATE_ELECTING
-    node.parent_id = 200
+    node.parent = nodes[1]
 
-    assert list(node.process_message(NetworkMessage('election_started', 300, 100))) == \
-        [NetworkMessage('election_voted', 100, 300, leader=None)]
+    assert list(node.process_message(NetworkMessage('election_started', nodes[2], nodes[0]))) == \
+        [NetworkMessage('election_voted', nodes[0], nodes[2], leader=None)]
     
     assert node.state == GateNode.STATE_ELECTING
-    assert node.parent_id == 200
+    assert node.parent == nodes[1]
 
 def test_first_ack():
-    node = GateNode(100, [200, 300, 400])
+    node = GateNode(nodes[0], [nodes[1], nodes[2], nodes[3]])
     node.state = GateNode.STATE_INITIATED
     
-    assert list(node.process_message(NetworkMessage('election_voted', 200, 100, leader=900))) == []
+    assert list(node.process_message(NetworkMessage('election_voted', nodes[1], nodes[0], leader=nodes[5]))) == []
     
     assert node.state == GateNode.STATE_INITIATED
-    assert node.answers == {200: 900}
+    assert node.answers == {nodes[1]: nodes[5]}
 
 def test_last_ack_intermediate_node():
-    node = GateNode(100, [200, 300, 400])
+    node = GateNode(nodes[0], [nodes[1], nodes[2], nodes[3]])
     node.state = GateNode.STATE_ELECTING
-    node.parent_id = 200
-    node.answers = {300: 900}
+    node.parent = nodes[1]
+    node.answers = {nodes[2]: nodes[5]}
     
-    assert list(node.process_message(NetworkMessage('election_voted', 400, 100, leader=800))) == \
-        [NetworkMessage('election_voted', 100, 200, leader=900)]
+    assert list(node.process_message(NetworkMessage('election_voted', nodes[3], nodes[0], leader=nodes[4]))) == \
+        [NetworkMessage('election_voted', nodes[0], nodes[1], leader=nodes[5])]
     
     assert node.state == GateNode.STATE_WAITING
-    assert node.answers == {300: 900, 400: 800}
+    assert node.answers == {nodes[2]: nodes[5], nodes[3]: nodes[4]}
 
 def test_last_ack_starting_node():
-    node = GateNode(100, [200, 300])
+    node = GateNode(nodes[0], [nodes[1], nodes[2]])
     node.state = GateNode.STATE_INITIATED
-    node.answers = {200: 700}
+    node.answers = {nodes[1]: nodes[4]}
     
-    assert list(node.process_message(NetworkMessage('election_voted', 300, 100, leader=900))) == \
-        [NetworkMessage('election_finished', 100, 200, leader=900), NetworkMessage('election_finished', 100, 300, leader=900)]
+    assert list(node.process_message(NetworkMessage('election_voted', nodes[2], nodes[0], leader=nodes[5]))) == \
+        [NetworkMessage('election_finished', nodes[0], nodes[1], leader=nodes[5]), NetworkMessage('election_finished', nodes[0], nodes[2], leader=nodes[5])]
     
     assert node.state == GateNode.STATE_IDLE
 
 def test_finishing_election():
-    node = GateNode(100, [200, 300, 400])
+    node = GateNode(nodes[0], [nodes[1], nodes[2], nodes[3]])
     node.state = GateNode.STATE_WAITING
 
-    assert list(node.process_message(NetworkMessage('election_finished', 200, 100, leader=900))) == \
-        [NetworkMessage('election_finished', 100, 300, leader=900), NetworkMessage('election_finished', 100, 400, leader=900)]
+    assert list(node.process_message(NetworkMessage('election_finished', nodes[1], nodes[0], leader=nodes[5]))) == \
+        [NetworkMessage('election_finished', nodes[0], nodes[2], leader=nodes[5]), NetworkMessage('election_finished', nodes[0], nodes[3], leader=nodes[5])]
     
     assert node.state == GateNode.STATE_IDLE

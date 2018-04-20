@@ -28,24 +28,24 @@ class Broker:
             self.log_incoming_message(node, incoming_message)
             
             for outgoing_message in node.process_message(incoming_message):
-                recipient = outgoing_message.recipient
+                recipient_id = outgoing_message.recipient.id
                 self.log_outgoing_message(node, outgoing_message)
-                self.outgoing_messages[recipient].put(outgoing_message)
+                self.outgoing_messages[recipient_id].put(outgoing_message)
     
     def add_incoming_message(self, message):
         self.incoming_messages.put(message)
     
     def get_outgoing_messages(self, recipient):
-        return self.outgoing_messages[recipient]
+        return self.outgoing_messages[recipient.id]
     
     def log_incoming_message(self, node, message):
         if isinstance(message, LocalMessage):
             log.info('Node %s receive local message: %s', node, message)
         elif isinstance(message, NetworkMessage):
-            log.info('Node %s receive from %s: %s', node, message.sender, message)
+            log.info('Node %s receive from %s: %s', node, message.sender.id, message)
     
     def log_outgoing_message(self, node, message):
         if isinstance(message, LocalMessage):
             log.info('Node %s send message: %s', node, message)
         elif isinstance(message, NetworkMessage):
-            log.info('Node %s send to %s: %s', node, message.recipient, message)
+            log.info('Node %s send to %s: %s', node, message.recipient.id, message)

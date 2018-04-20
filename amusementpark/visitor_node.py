@@ -6,9 +6,9 @@ class VisitorNode:
     STATE_ENTERED = 'entered'
     STATE_LEAVING = 'leaving'
 
-    def __init__(self, node_id, gate_id):
-        self.id = node_id
-        self.gate_id = gate_id
+    def __init__(self, info, gate):
+        self.info = info
+        self.gate = gate
         self.state = VisitorNode.STATE_IDLE
     
     def process_message(self, message):
@@ -23,14 +23,14 @@ class VisitorNode:
     
     def enter_park(self):
         if self.state == VisitorNode.STATE_IDLE:
-            yield NetworkMessage('enter_request', self.id, self.gate_id)
+            yield NetworkMessage('enter_request', self.info, self.gate)
             self.state = VisitorNode.STATE_ENTERING
         else:
             self.handle_unexpected_state()
 
     def leave_park(self):
         if self.state == VisitorNode.STATE_ENTERED:
-            yield NetworkMessage('leave_request', self.id, self.gate_id)
+            yield NetworkMessage('leave_request', self.info, self.gate)
             self.state = VisitorNode.STATE_LEAVING
         else:
             self.handle_unexpected_state()
@@ -61,4 +61,4 @@ class VisitorNode:
         raise Exception('Unexpected state')
     
     def __str__(self):
-        return '%d/%s' % (self.id, self.state)
+        return '%d/%s' % (self.info.id, self.state)

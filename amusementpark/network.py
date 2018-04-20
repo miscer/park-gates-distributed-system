@@ -1,8 +1,9 @@
 import socket
 from threading import Thread
-import json
+import pickle
 
 from amusementpark.messages import NetworkMessage
+from amusementpark.node_info import NodeInfo
 
 class Network:
     def __init__(self, port, broker):
@@ -27,37 +28,27 @@ class Network:
     def receive_messages(self, connection):
         while True:
             data = connection.recv(4096)
-            message = self.parse_message(data)
+            message = parse_message(data)
             self.broker.add_incoming_message(message)
     
-    def connect_to_node(self, node_id, address):
-        connection = socket.create_connection(address)
+    def connect_to_node(self, node):
+        connection = socket.create_connection(node.address)
 
-        thread = Thread(target=self.send_messages, args=(node_id, connection))
+        thread = Thread(target=self.send_messages, args=(node, connection))
         thread.start()
     
-    def send_messages(self, node_id, connection):
-        queue = self.broker.get_outgoing_messages(node_id)
+    def send_messages(self, node, connection):
+        queue = self.broker.get_outgoing_messages(node)
         
         while True:
             message = queue.get()
-            data = self.serialize_message(message)
+            data = serialize_message(message)
             connection.sendall(data)
             queue.task_done()
     
-    def parse_message(self, data):
-        parsed = json.loads(data, encoding='utf-8')
+def parse_message(data):
+    return pickle.loads(data)
 
-        return NetworkMessage(parsed['type'], parsed['sender'], parsed['recipient'], **parsed['payload'])
-
-    def serialize_message(self, message):
-        assert isinstance(message, NetworkMessage)
-
-        serialized = {
-            'type': message.type,
-            'sender': message.sender,
-            'recipient': message.recipient,
-            'payload': message.payload,
-        }
-
-        return bytes(json.dumps(serialized), 'utf-8')
+def serialize_message(message):
+    assert isinstance(message, NetworkMessage)
+    return pickle.dumps(message)

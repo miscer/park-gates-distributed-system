@@ -6,11 +6,11 @@ class GateNode:
     STATE_ELECTING = 'electing'
     STATE_WAITING = 'waiting'
 
-    def __init__(self, node_id, neighbour_ids):
-        self.id = node_id
-        self.neighbour_ids = neighbour_ids
+    def __init__(self, info, neighbours):
+        self.info = info
+        self.neighbours = neighbours
         self.state = GateNode.STATE_IDLE
-        self.parent_id = None
+        self.parent = None
         self.answers = {}
     
     def process_message(self, message):
@@ -28,84 +28,84 @@ class GateNode:
             yield from self.process_election_finished(message)
     
     def say_hello(self):
-        for neighbour_id in self.neighbour_ids:
-            yield NetworkMessage('hello', self.id, neighbour_id)
+        for neighbour in self.neighbours:
+            yield NetworkMessage('hello', self.info, neighbour)
 
     def start_election(self):
         if self.state == GateNode.STATE_IDLE:
             self.state = GateNode.STATE_INITIATED
 
-            for neighbour_id in self.neighbour_ids:
-                yield NetworkMessage('election_started', self.id, neighbour_id)
+            for neighbour in self.neighbours:
+                yield NetworkMessage('election_started', self.info, neighbour)
         else:
             raise Exception('Unexpected state')
     
     def process_hello(self, message):
-        yield NetworkMessage('hey', self.id, message.sender)
+        yield NetworkMessage('hey', self.info, message.sender)
     
     def process_election_started(self, message):
         if self.state == GateNode.STATE_IDLE:
             self.state = GateNode.STATE_ELECTING
-            self.parent_id = message.sender
+            self.parent = message.sender
 
-            for child_id in self.get_child_ids():
-                yield NetworkMessage('election_started', self.id, child_id)
+            for child in self.get_children():
+                yield NetworkMessage('election_started', self.info, child)
         
         elif self.state in (GateNode.STATE_ELECTING, GateNode.STATE_INITIATED):
-            yield NetworkMessage('election_voted', self.id, message.sender, leader=None)
+            yield NetworkMessage('election_voted', self.info, message.sender, leader=None)
 
         else:
             raise Exception('Unexpected state')
     
     def process_election_voted(self, message):
-        leader_id = message.payload['leader']
+        leader = message.payload['leader']
 
         if self.state in (GateNode.STATE_ELECTING, GateNode.STATE_INITIATED):
-            self.answers[message.sender] = leader_id
+            self.answers[message.sender] = leader
 
             if self.has_all_answers():
                 leader = self.get_best_answer()
 
                 if self.state == GateNode.STATE_ELECTING:
                     self.state = GateNode.STATE_WAITING
-                    yield NetworkMessage('election_voted', self.id, self.parent_id, leader=leader)
+                    yield NetworkMessage('election_voted', self.info, self.parent, leader=leader)
                 else:
                     self.state = GateNode.STATE_IDLE
                     
-                    for neighbour_id in self.neighbour_ids:
-                        yield NetworkMessage('election_finished', self.id, neighbour_id, leader=leader)
+                    for neighbour in self.neighbours:
+                        yield NetworkMessage('election_finished', self.info, neighbour, leader=leader)
         else:
             raise Exception('Unexpected state')
 
     def process_election_finished(self, message):
-        leader_id = message.payload['leader']
+        leader = message.payload['leader']
 
         if self.state == GateNode.STATE_WAITING:
             self.state = GateNode.STATE_IDLE
 
-            for neighbour_id in self.neighbour_ids:
-                if neighbour_id != message.sender:
-                    yield NetworkMessage('election_finished', self.id, neighbour_id, leader=leader_id)
+            for neighbour in self.neighbours:
+                if neighbour != message.sender:
+                    yield NetworkMessage('election_finished', self.info, neighbour, leader=leader)
 
-    def get_child_ids(self):
+    def get_children(self):
         if self.state == GateNode.STATE_INITIATED:
-            return self.neighbour_ids
+            return self.neighbours
         elif self.state == GateNode.STATE_ELECTING:
-            return [child_id for child_id in self.neighbour_ids if child_id != self.parent_id]
+            return [child for child in self.neighbours if child != self.parent]
         else:
             raise Exception('Unexpected state')
     
     def has_all_answers(self):
-        return all(child_id in self.answers for child_id in self.get_child_ids())
+        return all(child in self.answers for child in self.get_children())
     
     def get_best_answer(self):
         child_answers = [
-            self.answers[child_id]
-            for child_id in self.get_child_ids()
-            if self.answers[child_id] is not None
+            self.answers[child]
+            for child in self.get_children()
+            if self.answers[child] is not None
         ]
 
-        return max(child_answers + [self.id])
+        return max(child_answers + [self.info], key=lambda node: node.id)
     
     def __str__(self):
-        return '%d/%s' % (self.id, self.state)
+        return '%d/%s' % (self.info.id, self.state)

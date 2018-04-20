@@ -1,18 +1,25 @@
 from unittest.mock import Mock
 from amusementpark.broker import Broker
 from amusementpark.messages import NetworkMessage, LocalMessage
+from amusementpark.node_info import NodeInfo
+
+nodes = [
+    NodeInfo(100, 1),
+    NodeInfo(200, 2),
+    NodeInfo(300, 3),
+]
 
 def test_passing_messages():
     in_message_1 = Mock(NetworkMessage)
-    in_message_1.sender = 100
+    in_message_1.sender = nodes[0]
     in_message_2 = Mock(LocalMessage)
 
     out_message_1 = Mock()
-    out_message_1.recipient = 100
+    out_message_1.recipient = nodes[0]
     out_message_2 = Mock()
-    out_message_2.recipient = 200
+    out_message_2.recipient = nodes[1]
     out_message_3 = Mock()
-    out_message_3.recipient = 300
+    out_message_3.recipient = nodes[2]
     
     node = Mock()
     node.process_message.side_effect = [
@@ -28,6 +35,6 @@ def test_passing_messages():
     thread = broker.run(node)
     thread.join()
 
-    assert broker.get_outgoing_messages(100).get(block=False) == out_message_1
-    assert broker.get_outgoing_messages(200).get(block=False) == out_message_2
-    assert broker.get_outgoing_messages(300).get(block=False) == out_message_3
+    assert broker.get_outgoing_messages(nodes[0]).get(block=False) == out_message_1
+    assert broker.get_outgoing_messages(nodes[1]).get(block=False) == out_message_2
+    assert broker.get_outgoing_messages(nodes[2]).get(block=False) == out_message_3
