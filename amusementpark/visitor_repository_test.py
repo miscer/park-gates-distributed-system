@@ -1,3 +1,4 @@
+import pytest
 from amusementpark.visitor_repository import State, Repository
 
 def test_read_write_delete(tmpdir):
@@ -11,3 +12,24 @@ def test_read_write_delete(tmpdir):
 
     repository.delete_state()
     assert repository.read_state() is None
+
+def test_enter():
+    state = State(capacity=2, visitors=[100])
+
+    with pytest.raises(AssertionError):
+        state.enter(100)
+    
+    state.enter(200)
+    assert state.visitors == [100, 200]
+
+    with pytest.raises(AssertionError):
+        state.enter(300)
+
+def test_leave():
+    state = State(capacity=2, visitors=[100])
+
+    with pytest.raises(AssertionError):
+        state.leave(200)
+    
+    state.leave(100)
+    assert state.visitors == []
