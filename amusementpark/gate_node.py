@@ -21,6 +21,7 @@ class GateNode:
 
         self.mutex_requested = False
         self.enter_queue = []
+        self.leave_queue = []
     
     def process_message(self, message):
         if message.type == 'say_hello':
@@ -41,6 +42,8 @@ class GateNode:
             yield from self.process_mutex_released(message)
         elif message.type == 'enter_request':
             yield from self.process_enter_request(message)
+        elif message.type == 'leave_request':
+            yield from self.process_leave_request(message)
         elif message.type == 'mutex_granted':
             yield from self.process_mutex_granted(message)
     
@@ -136,6 +139,13 @@ class GateNode:
         
         self.enter_queue.append(message.sender)
     
+    def process_leave_request(self, message):
+        if not self.mutex_requested:
+            yield NetworkMessage('mutex_requested', self.info, self.leader)
+            self.mutex_requested = True
+        
+        self.leave_queue.append(message.sender)
+    
     def process_mutex_granted(self, message):
         if not self.mutex_requested:
             raise Exception('Mutex not requested')
@@ -149,8 +159,17 @@ class GateNode:
             except AssertionError:
                 yield NetworkMessage('enter_response', self.info, entering_node, allowed=False)
         
+        for leaving_node in self.leave_queue:
+            try:
+                state.leave(leaving_node.id)
+                yield NetworkMessage('leave_response', self.info, leaving_node, allowed=True)
+            except AssertionError:
+                yield NetworkMessage('leave_response', self.info, leaving_node, allowed=False)
+        
         self.repository.write_state(state)
+        
         self.enter_queue = []
+        self.leave_queue = []
         
         yield NetworkMessage('mutex_released', self.info, self.leader)
 

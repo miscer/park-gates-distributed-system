@@ -144,3 +144,22 @@ def test_enter_request(visitor_repository):
             NetworkMessage('enter_response', nodes[0], nodes[3], allowed=False),
             NetworkMessage('mutex_released', nodes[0], nodes[1])]
     assert node.enter_queue == []
+
+def test_leave_request(visitor_repository):
+    visitor_repository.write_state(State(capacity=1, visitors=[nodes[2].id]))
+
+    node = GateNode(nodes[0], [], visitor_repository)
+    node.leader = nodes[1]
+
+    assert list(node.process_message(NetworkMessage('leave_request', nodes[2], nodes[0]))) == \
+        [NetworkMessage('mutex_requested', nodes[0], nodes[1])]
+    assert node.leave_queue == [nodes[2]]
+
+    assert list(node.process_message(NetworkMessage('leave_request', nodes[3], nodes[0]))) == []
+    assert node.leave_queue == [nodes[2], nodes[3]]
+
+    assert list(node.process_message(NetworkMessage('mutex_granted', nodes[1], nodes[0]))) == \
+        [NetworkMessage('leave_response', nodes[0], nodes[2], allowed=True),
+            NetworkMessage('leave_response', nodes[0], nodes[3], allowed=False),
+            NetworkMessage('mutex_released', nodes[0], nodes[1])]
+    assert node.leave_queue == []

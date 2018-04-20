@@ -12,6 +12,10 @@ class State:
         assert len(self.visitors) < self.capacity
         self.visitors.append(visitor)
     
+    def leave(self, visitor):
+        assert visitor in self.visitors
+        self.visitors.remove(visitor)
+    
     def __eq__(self, other):
         if isinstance(other, State):
             return self.capacity == other.capacity and self.visitors == other.visitors
