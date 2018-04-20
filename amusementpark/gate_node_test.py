@@ -3,12 +3,12 @@ from amusementpark.messages import NetworkMessage, LocalMessage
 from amusementpark.node_info import NodeInfo
 
 nodes = [
-    NodeInfo(100, 1),
-    NodeInfo(200, 2),
-    NodeInfo(300, 3),
-    NodeInfo(400, 4),
-    NodeInfo(800, 8),
-    NodeInfo(900, 9),
+    NodeInfo(100, 1, 4),
+    NodeInfo(200, 2, 2),
+    NodeInfo(300, 3, 6),
+    NodeInfo(400, 4, 3),
+    NodeInfo(800, 8, 5),
+    NodeInfo(900, 9, 9),
 ]
 
 def test_hello():

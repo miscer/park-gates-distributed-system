@@ -7,7 +7,7 @@ from amusementpark.node_info import NodeInfo
 
 def create_network(node_defs):
     nodes = {
-        name: NodeInfo(node_id, ('localhost', port))
+        name: NodeInfo(id=node_id, address=('localhost', port), capacity=random.randint(1, 10))
 
         for name, node_id, port in zip(
             node_defs.keys(),

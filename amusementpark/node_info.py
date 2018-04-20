@@ -1,3 +1,3 @@
 import collections
 
-NodeInfo = collections.namedtuple('NodeInfo', 'id address')
+NodeInfo = collections.namedtuple('NodeInfo', 'id address capacity')

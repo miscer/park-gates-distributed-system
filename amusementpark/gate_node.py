@@ -105,7 +105,7 @@ class GateNode:
             if self.answers[child] is not None
         ]
 
-        return max(child_answers + [self.info], key=lambda node: node.id)
+        return max(child_answers + [self.info], key=lambda node: node.capacity)
     
     def __str__(self):
         return '%d/%s' % (self.info.id, self.state)

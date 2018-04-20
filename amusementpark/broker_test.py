@@ -4,9 +4,9 @@ from amusementpark.messages import NetworkMessage, LocalMessage
 from amusementpark.node_info import NodeInfo
 
 nodes = [
-    NodeInfo(100, 1),
-    NodeInfo(200, 2),
-    NodeInfo(300, 3),
+    NodeInfo(100, 1, 4),
+    NodeInfo(200, 2, 8),
+    NodeInfo(300, 3, 3),
 ]
 
 def test_passing_messages():
