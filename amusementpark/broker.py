@@ -11,7 +11,7 @@ class Broker:
 
     def __init__(self):
         self.incoming_messages = Queue()
-        self.outgoing_messages = defaultdict(Queue)
+        self.outgoing_messages = Queue()
     
     def run(self, node):
         thread = Thread(target=self.process_messages, args=(node,))
@@ -28,15 +28,14 @@ class Broker:
             self.log_incoming_message(node, incoming_message)
             
             for outgoing_message in node.process_message(incoming_message):
-                recipient_id = outgoing_message.recipient.id
                 self.log_outgoing_message(node, outgoing_message)
-                self.outgoing_messages[recipient_id].put(outgoing_message)
+                self.outgoing_messages.put(outgoing_message)
     
     def add_incoming_message(self, message):
         self.incoming_messages.put(message)
     
-    def get_outgoing_messages(self, recipient):
-        return self.outgoing_messages[recipient.id]
+    def get_outgoing_messages(self):
+        return self.outgoing_messages
     
     def log_incoming_message(self, node, message):
         if isinstance(message, LocalMessage):

@@ -9,16 +9,17 @@ class Network:
     def __init__(self, port, broker):
         self.port = port
         self.broker = broker
+        self.connections = {}
+
+    def run(self):
+        Thread(target=self.start_server).start()
+        Thread(target=self.send_messages).start()
     
     def start_server(self):
         server = socket.socket()
         server.bind(('0.0.0.0', self.port))
         server.listen()
 
-        thread = Thread(target=self.accept_connections, args=(server,))
-        thread.start()
-    
-    def accept_connections(self, server):
         while True:
             connection, address = server.accept()
             
@@ -30,21 +31,24 @@ class Network:
             data = connection.recv(4096)
             message = parse_message(data)
             self.broker.add_incoming_message(message)
-    
-    def connect_to_node(self, node):
-        connection = socket.create_connection(node.address)
 
-        thread = Thread(target=self.send_messages, args=(node, connection))
-        thread.start()
-    
-    def send_messages(self, node, connection):
-        queue = self.broker.get_outgoing_messages(node)
-        
+    def send_messages(self):
+        queue = self.broker.get_outgoing_messages()
+
         while True:
             message = queue.get()
+            
+            connection = self.get_connection(message.recipient)
             data = serialize_message(message)
             connection.sendall(data)
+            
             queue.task_done()
+    
+    def get_connection(self, node):
+        if node not in self.connections:
+            self.connections[node] = socket.create_connection(node.address, timeout=10)
+        
+        return self.connections[node]
     
 def parse_message(data):
     return pickle.loads(data)

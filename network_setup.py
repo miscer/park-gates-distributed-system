@@ -26,17 +26,9 @@ def create_network(node_defs):
         broker = Broker()
         network = Network(port, broker)
 
-        network.start_server()
+        broker.run(gate_node)
+        network.run()
 
         running[name] = (gate_node, broker, network)
-
-    for name, info in nodes.items():
-        gate_node, broker, network = running[name]
-        neighbours = [nodes[neighbour] for neighbour in node_defs[name]]
-
-        for neighbour in neighbours:
-            network.connect_to_node(neighbour)
-        
-        broker.run(gate_node)
     
     return nodes, running
