@@ -78,6 +78,7 @@ def test_last_ack_starting_node():
         [NetworkMessage('election_finished', nodes[0], nodes[1], leader=nodes[5]), NetworkMessage('election_finished', nodes[0], nodes[2], leader=nodes[5])]
     
     assert node.state == GateNode.STATE_IDLE
+    assert node.leader == nodes[5]
 
 def test_finishing_election():
     node = GateNode(nodes[0], [nodes[1], nodes[2], nodes[3]])
@@ -87,3 +88,33 @@ def test_finishing_election():
         [NetworkMessage('election_finished', nodes[0], nodes[2], leader=nodes[5]), NetworkMessage('election_finished', nodes[0], nodes[3], leader=nodes[5])]
     
     assert node.state == GateNode.STATE_IDLE
+    assert node.leader == nodes[5]
+
+def test_request_mutex():
+    node = GateNode(nodes[0], [])
+    node.leader = nodes[0]
+
+    assert list(node.process_message(NetworkMessage('mutex_requested', nodes[1], nodes[0]))) == \
+        [NetworkMessage('mutex_granted', nodes[0], nodes[1])]
+    assert node.mutex_holder == nodes[1]
+    assert not node.mutex_queue
+
+    assert list(node.process_message(NetworkMessage('mutex_requested', nodes[2], nodes[0]))) == []
+    assert node.mutex_queue == [nodes[2]]
+
+    assert list(node.process_message(NetworkMessage('mutex_requested', nodes[3], nodes[0]))) == []
+    assert node.mutex_queue == [nodes[2], nodes[3]]
+
+    assert list(node.process_message(NetworkMessage('mutex_released', nodes[1], nodes[0]))) == \
+        [NetworkMessage('mutex_granted', nodes[0], nodes[2])]
+    assert node.mutex_holder == nodes[2]
+    assert node.mutex_queue == [nodes[3]]
+
+    assert list(node.process_message(NetworkMessage('mutex_released', nodes[2], nodes[0]))) == \
+        [NetworkMessage('mutex_granted', nodes[0], nodes[3])]
+    assert node.mutex_holder == nodes[3]
+    assert node.mutex_queue == []
+
+    assert list(node.process_message(NetworkMessage('mutex_released', nodes[3], nodes[0]))) == []
+    assert node.mutex_holder is None
+    assert node.mutex_queue == []

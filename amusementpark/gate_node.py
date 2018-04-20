@@ -9,9 +9,14 @@ class GateNode:
     def __init__(self, info, neighbours):
         self.info = info
         self.neighbours = neighbours
+
         self.state = GateNode.STATE_IDLE
         self.parent = None
+        self.leader = None
         self.answers = {}
+
+        self.mutex_holder = None
+        self.mutex_queue = []
     
     def process_message(self, message):
         if message.type == 'say_hello':
@@ -26,6 +31,10 @@ class GateNode:
             yield from self.process_election_voted(message)
         elif message.type == 'election_finished':
             yield from self.process_election_finished(message)
+        elif message.type == 'mutex_requested':
+            yield from self.process_mutex_requested(message)
+        elif message.type == 'mutex_released':
+            yield from self.process_mutex_released(message)
     
     def say_hello(self):
         for neighbour in self.neighbours:
@@ -71,6 +80,7 @@ class GateNode:
                     yield NetworkMessage('election_voted', self.info, self.parent, leader=leader)
                 else:
                     self.state = GateNode.STATE_IDLE
+                    self.leader = leader
                     
                     for neighbour in self.neighbours:
                         yield NetworkMessage('election_finished', self.info, neighbour, leader=leader)
@@ -82,10 +92,34 @@ class GateNode:
 
         if self.state == GateNode.STATE_WAITING:
             self.state = GateNode.STATE_IDLE
+            self.leader = leader
 
             for neighbour in self.neighbours:
                 if neighbour != message.sender:
                     yield NetworkMessage('election_finished', self.info, neighbour, leader=leader)
+    
+    def process_mutex_requested(self, message):
+        if self.mutex_holder is None:
+            self.mutex_holder = message.sender
+            yield NetworkMessage('mutex_granted', self.info, self.mutex_holder)
+        else:
+            self.mutex_queue.append(message.sender)
+            
+    def process_mutex_released(self, message):
+        if self.leader != self.info:
+            raise Exception('Not a leader')
+
+        if self.mutex_holder is None:
+            raise Exception('No mutex holder')
+
+        if self.mutex_holder is not message.sender:
+            raise Exception('Invalid sender')
+        
+        if self.mutex_queue:
+            self.mutex_holder = self.mutex_queue.pop(0)
+            yield NetworkMessage('mutex_granted', self.info, self.mutex_holder)
+        else:
+            self.mutex_holder = None
 
     def get_children(self):
         if self.state == GateNode.STATE_INITIATED:
