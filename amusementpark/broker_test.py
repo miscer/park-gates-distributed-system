@@ -27,11 +27,11 @@ def test_passing_messages():
         [out_message_3, None],
     ]
 
-    broker = Broker()
+    broker = Broker(node)
     broker.add_incoming_message(in_message_1)
     broker.add_incoming_message(in_message_2)
 
-    thread = broker.run(node)
+    thread = broker.run()
     thread.join()
 
     assert broker.get_outgoing_message(block=False) == out_message_1

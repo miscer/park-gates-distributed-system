@@ -28,10 +28,10 @@ def create_gate_nodes(node_infos, node_neighbours, repository):
         _, port = info.address
 
         gate_node = GateNode(info, neighbours, repository)
-        broker = Broker()
+        broker = Broker(gate_node)
         network = Network(port, broker)
 
-        broker.run(gate_node)
+        broker.run()
         network.run()
 
         nodes[name] = (gate_node, broker, network)
@@ -46,10 +46,10 @@ def create_visitor_node():
     port = get_free_port()
     node_info = NodeInfo(visitor_node_id, ('localhost', port), 1)
     visitor_node = VisitorNode(node_info)
-    broker = Broker()
+    broker = Broker(visitor_node)
     network = Network(port, broker)
 
-    broker.run(visitor_node)
+    broker.run()
     network.run()
 
     visitor_node_id += 1
