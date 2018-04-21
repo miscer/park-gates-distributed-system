@@ -9,8 +9,6 @@ from amusementpark.messages import NetworkMessage, LocalMessage
 log = logging.getLogger('amusementpark.broker')
 
 class Broker:
-    END = 'end'
-
     def __init__(self):
         self.incoming_messages = PriorityQueue()
         self.outgoing_messages = PriorityQueue()
@@ -23,17 +21,16 @@ class Broker:
     def process_messages(self, node):
         while True:
             _, incoming_message = self.incoming_messages.get()
-
-            if incoming_message == Broker.END:
-                break
             
             self.log_incoming_message(node, incoming_message)
             
             for outgoing_message in node.process_message(incoming_message):
-                self.log_outgoing_message(node, outgoing_message)
-                self.outgoing_messages.put((time.time(), outgoing_message))
-        
-        self.log_end(node)
+                if outgoing_message is not None:
+                    self.log_outgoing_message(node, outgoing_message)
+                    self.outgoing_messages.put((time.time(), outgoing_message))
+                else:
+                    self.log_end(node)
+                    return
     
     def add_incoming_message(self, message):
         self.incoming_messages.put((time.time(), message))
@@ -58,4 +55,4 @@ class Broker:
             log.info('Node %s send to %s: %s', node, message.recipient.id, message)
     
     def log_end(self, node):
-        log.info('Node %s stop processing messages')
+        log.info('Node %s stop processing messages', node)
