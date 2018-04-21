@@ -27,6 +27,7 @@ class Network:
 
         while True:
             connection, address = server.accept()
+            connection.setsockopt(socket.SOL_TCP, socket.TCP_NODELAY, 1)
 
             _, port = address
             log.debug('Network %d receive connection from %d' % (self.port, port))
@@ -36,7 +37,7 @@ class Network:
     
     def receive_messages(self, connection, address):
         while True:
-            data = connection.recv(4096)
+            data = receive_data(connection)
             message = parse_message(data)
 
             _, port = address
@@ -50,7 +51,7 @@ class Network:
             
             connection = self.get_connection(message.recipient)
             data = serialize_message(message)
-            connection.sendall(data)
+            send_data(connection, data)
 
             _, port = message.recipient.address
             log.debug('Network %d send message to %d: %s' % (self.port, port, message))
@@ -59,7 +60,10 @@ class Network:
     
     def get_connection(self, node):
         if node not in self.connections:
-            self.connections[node] = socket.create_connection(node.address, timeout=10)
+            connection = socket.create_connection(node.address, timeout=10)
+            connection.setsockopt(socket.SOL_TCP, socket.TCP_NODELAY, 1)
+
+            self.connections[node] = connection
 
             _, port = node.address
             log.debug('Network %d connect to %d' % (self.port, port))
@@ -72,3 +76,24 @@ def parse_message(data):
 def serialize_message(message):
     assert isinstance(message, NetworkMessage)
     return pickle.dumps(message)
+
+INT_BYTE_LENGTH = 4
+
+def send_data(connection, data_buffer):
+    size_buffer = len(data_buffer).to_bytes(INT_BYTE_LENGTH, byteorder='big')
+    connection.sendall(size_buffer + data_buffer)
+
+def receive_data(connection):
+    size_buffer = bytes()
+
+    while len(size_buffer) < INT_BYTE_LENGTH:
+        size_buffer += connection.recv(INT_BYTE_LENGTH - len(size_buffer))
+    
+    size = int.from_bytes(size_buffer, byteorder='big')
+
+    data_buffer = bytes()
+    
+    while len(data_buffer) < size:
+        data_buffer += connection.recv(size - len(data_buffer))
+    
+    return data_buffer
