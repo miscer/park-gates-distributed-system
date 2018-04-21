@@ -28,6 +28,8 @@ class GateNode:
             yield from self.say_hello()
         elif message.type == 'start_election':
             yield from self.start_election()
+        elif message.type == 'remove_leader':
+            yield from self.remove_leader()
         elif message.type == 'terminate':
             yield from self.terminate()
         elif message.type == 'hello':
@@ -48,6 +50,8 @@ class GateNode:
             yield from self.process_leave_request(message)
         elif message.type == 'mutex_granted':
             yield from self.process_mutex_granted(message)
+        elif message.type == 'leader_removed':
+            yield from self.process_leader_removed(message)
         elif message.type == 'terminated':
             self.process_terminated(message)
     
@@ -67,6 +71,18 @@ class GateNode:
                 yield NetworkMessage('election_started', self.info, neighbour)
         else:
             self.handle_error('Unexpected state')
+    
+    def remove_leader(self):
+        if self.state != GateNode.STATE_IDLE:
+            self.handle_error('Unexpected state')
+        
+        if self.leader != self.info:
+            self.handle_error('Not the leader')
+        
+        self.leader = None
+        
+        for neighbour in self.neighbours:
+            yield NetworkMessage('leader_removed', self.info, neighbour)
     
     def terminate(self):
         if self.state == GateNode.STATE_IDLE:
@@ -197,6 +213,16 @@ class GateNode:
         self.leave_queue = []
         
         yield NetworkMessage('mutex_released', self.info, self.leader)
+    
+    def process_leader_removed(self, message):
+        if self.leader is None:
+            return
+        
+        self.leader = None
+
+        for neighbour in self.neighbours:
+            if neighbour != message.sender:
+                yield NetworkMessage('leader_removed', self.info, neighbour)
     
     def process_terminated(self, message):
         if self.state != GateNode.STATE_IDLE:

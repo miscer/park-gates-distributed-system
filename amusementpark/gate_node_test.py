@@ -194,4 +194,20 @@ def test_terminated():
 
     assert list(node.process_message(NetworkMessage('terminated', nodes[1], nodes[0]))) == []
     assert node.neighbours == [nodes[2]]
-    
+
+def test_remove_leader():
+    node = GateNode(nodes[0], [nodes[1], nodes[2]], visitor_repository)
+    node.leader = nodes[0]
+
+    assert list(node.process_message(LocalMessage('remove_leader'))) == \
+        [NetworkMessage('leader_removed', nodes[0], nodes[1]),
+            NetworkMessage('leader_removed', nodes[0], nodes[2])]
+    assert node.leader is None
+
+def test_leader_removed():
+    node = GateNode(nodes[0], [nodes[1], nodes[2]], visitor_repository)
+    node.leader = nodes[5]
+
+    assert list(node.process_message(NetworkMessage('leader_removed', nodes[1], nodes[0]))) == \
+        [NetworkMessage('leader_removed', nodes[0], nodes[2])]
+    assert node.leader is None
