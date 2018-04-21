@@ -41,7 +41,7 @@ def create_gate_nodes(node_infos, node_neighbours, repository):
 visitor_node_id = 2000
 
 def create_visitor_node():
-    global visitor_node_id, visitor_node_port
+    global visitor_node_id
 
     port = get_free_port()
     node_info = NodeInfo(visitor_node_id, ('localhost', port), 1)
