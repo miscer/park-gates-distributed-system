@@ -1,11 +1,12 @@
 import logging
 import random
 from amusementpark.messages import LocalMessage
-from network_setup import create_network
+from amusementpark.visitor_repository import Repository, State
+from helpers import create_node_infos, create_gate_nodes
 
 logging.basicConfig(level=logging.INFO)
 
-nodes, running = create_network({
+network_map = {
     'a': set('bj'),
     'b': set('agc'),
     'c': set('bde'),
@@ -16,8 +17,15 @@ nodes, running = create_network({
     'h': set('gi'),
     'i': set('fh'),
     'j': set('ag'),
-})
+}
 
-_, broker, _ = random.choice(list(running.values()))
+repository = Repository('repository.json')
+repository.write_state(State(capacity=3, visitors=[]))
+
+gate_node_infos = create_node_infos(network_map.keys())
+gate_nodes = create_gate_nodes(gate_node_infos, network_map, repository)
+
+_, broker, _ = random.choice(list(gate_nodes.values()))
+
 message = LocalMessage('start_election')
 broker.add_incoming_message(message)
