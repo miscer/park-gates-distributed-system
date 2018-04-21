@@ -8,9 +8,9 @@ nodes = [
 ]
 
 def test_enter_allowed():
-    node = VisitorNode(nodes[0], nodes[1])
+    node = VisitorNode(nodes[0])
 
-    assert list(node.process_message(LocalMessage('enter_park'))) == \
+    assert list(node.process_message(LocalMessage('enter_park', gate=nodes[1]))) == \
         [NetworkMessage('enter_request', nodes[0], nodes[1])]
     assert node.state == VisitorNode.STATE_ENTERING
 
@@ -18,9 +18,9 @@ def test_enter_allowed():
     assert node.state == VisitorNode.STATE_ENTERED
 
 def test_enter_refused():
-    node = VisitorNode(nodes[0], nodes[1])
+    node = VisitorNode(nodes[0])
 
-    assert list(node.process_message(LocalMessage('enter_park'))) == \
+    assert list(node.process_message(LocalMessage('enter_park', gate=nodes[1]))) == \
         [NetworkMessage('enter_request', nodes[0], nodes[1])]
     assert node.state == VisitorNode.STATE_ENTERING
 
@@ -28,10 +28,10 @@ def test_enter_refused():
     assert node.state == VisitorNode.STATE_IDLE
 
 def test_leave_allowed():
-    node = VisitorNode(nodes[0], nodes[1])
+    node = VisitorNode(nodes[0])
     node.state = VisitorNode.STATE_ENTERED
 
-    assert list(node.process_message(LocalMessage('leave_park'))) == \
+    assert list(node.process_message(LocalMessage('leave_park', gate=nodes[1]))) == \
         [NetworkMessage('leave_request', nodes[0], nodes[1])]
     assert node.state == VisitorNode.STATE_LEAVING
 
@@ -39,10 +39,10 @@ def test_leave_allowed():
     assert node.state == VisitorNode.STATE_IDLE
 
 def test_leave_rejected():
-    node = VisitorNode(nodes[0], nodes[1])
+    node = VisitorNode(nodes[0])
     node.state = VisitorNode.STATE_ENTERED
 
-    assert list(node.process_message(LocalMessage('leave_park'))) == \
+    assert list(node.process_message(LocalMessage('leave_park', gate=nodes[1]))) == \
         [NetworkMessage('leave_request', nodes[0], nodes[1])]
     assert node.state == VisitorNode.STATE_LEAVING
 

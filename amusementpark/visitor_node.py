@@ -6,31 +6,34 @@ class VisitorNode:
     STATE_ENTERED = 'entered'
     STATE_LEAVING = 'leaving'
 
-    def __init__(self, info, gate):
+    def __init__(self, info):
         self.info = info
-        self.gate = gate
         self.state = VisitorNode.STATE_IDLE
     
     def process_message(self, message):
         if message.type == 'enter_park':
-            yield from self.enter_park()
+            yield from self.enter_park(message)
         elif message.type == 'leave_park':
-            yield from self.leave_park()
+            yield from self.leave_park(message)
         elif message.type == 'enter_response':
             self.process_enter_response(message)
         elif message.type == 'leave_response':
             self.process_leave_response(message)
     
-    def enter_park(self):
+    def enter_park(self, message):
+        gate = message.payload['gate']
+
         if self.state == VisitorNode.STATE_IDLE:
-            yield NetworkMessage('enter_request', self.info, self.gate)
+            yield NetworkMessage('enter_request', self.info, gate)
             self.state = VisitorNode.STATE_ENTERING
         else:
             self.handle_unexpected_state()
 
-    def leave_park(self):
+    def leave_park(self, message):
+        gate = message.payload['gate']
+
         if self.state == VisitorNode.STATE_ENTERED:
-            yield NetworkMessage('leave_request', self.info, self.gate)
+            yield NetworkMessage('leave_request', self.info, gate)
             self.state = VisitorNode.STATE_LEAVING
         else:
             self.handle_unexpected_state()
