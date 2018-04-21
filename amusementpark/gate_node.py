@@ -54,6 +54,10 @@ class GateNode:
     def start_election(self):
         if self.state == GateNode.STATE_IDLE:
             self.state = GateNode.STATE_INITIATED
+            
+            self.parent = None
+            self.leader = None
+            self.answers = {}
 
             for neighbour in self.neighbours:
                 yield NetworkMessage('election_started', self.info, neighbour)
@@ -66,8 +70,10 @@ class GateNode:
     def process_election_started(self, message):
         if self.state == GateNode.STATE_IDLE:
             self.state = GateNode.STATE_ELECTING
+
             self.parent = message.sender
             self.leader = None
+            self.answers = {}
 
             for child in self.get_children():
                 yield NetworkMessage('election_started', self.info, child)
@@ -105,7 +111,6 @@ class GateNode:
         if self.state == GateNode.STATE_WAITING:
             self.state = GateNode.STATE_IDLE
             self.leader = leader
-            self.parent = None
 
             for neighbour in self.neighbours:
                 if neighbour != message.sender:
