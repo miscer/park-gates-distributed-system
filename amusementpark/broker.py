@@ -30,6 +30,8 @@ class Broker:
             for outgoing_message in node.process_message(incoming_message):
                 self.log_outgoing_message(node, outgoing_message)
                 self.outgoing_messages.put(outgoing_message)
+        
+        self.log_end(node)
     
     def add_incoming_message(self, message):
         self.incoming_messages.put(message)
@@ -48,3 +50,6 @@ class Broker:
             log.info('Node %s send message: %s', node, message)
         elif isinstance(message, NetworkMessage):
             log.info('Node %s send to %s: %s', node, message.recipient.id, message)
+    
+    def log_end(self, node):
+        log.info('Node %s stop processing messages')
