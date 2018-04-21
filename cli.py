@@ -37,6 +37,12 @@ def start_election(gate_name):
     message = LocalMessage('start_election')
     broker.add_incoming_message(message)
 
+def terminate_gate(gate_name):
+    _, broker, _ = gate_nodes[gate_name]
+
+    message = LocalMessage('terminate')
+    broker.add_incoming_message(message)
+
 def create_visitor():
     return create_visitor_node()
 

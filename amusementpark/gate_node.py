@@ -28,6 +28,8 @@ class GateNode:
             yield from self.say_hello()
         elif message.type == 'start_election':
             yield from self.start_election()
+        elif message.type == 'terminate':
+            yield from self.terminate()
         elif message.type == 'hello':
             yield from self.process_hello(message)
         elif message.type == 'election_started':
@@ -46,6 +48,8 @@ class GateNode:
             yield from self.process_leave_request(message)
         elif message.type == 'mutex_granted':
             yield from self.process_mutex_granted(message)
+        elif message.type == 'terminated':
+            self.process_terminated(message)
     
     def say_hello(self):
         for neighbour in self.neighbours:
@@ -61,6 +65,15 @@ class GateNode:
 
             for neighbour in self.neighbours:
                 yield NetworkMessage('election_started', self.info, neighbour)
+        else:
+            self.handle_error('Unexpected state')
+    
+    def terminate(self):
+        if self.state == GateNode.STATE_IDLE:
+            for neighbour in self.neighbours:
+                yield NetworkMessage('terminated', self.info, neighbour)
+            
+            yield None
         else:
             self.handle_error('Unexpected state')
     
@@ -180,6 +193,12 @@ class GateNode:
         self.leave_queue = []
         
         yield NetworkMessage('mutex_released', self.info, self.leader)
+    
+    def process_terminated(self, message):
+        if self.state != GateNode.STATE_IDLE:
+            self.handle_error('Unexpected state')
+        
+        self.neighbours.remove(message.sender)
 
     def get_children(self):
         if self.state == GateNode.STATE_INITIATED:

@@ -171,3 +171,18 @@ def test_leave_request(visitor_repository):
     assert list(node.process_message(NetworkMessage('leave_request', nodes[3], nodes[0]))) == \
         [NetworkMessage('mutex_requested', nodes[0], nodes[5])]
     assert node.leave_queue == [nodes[3]]
+
+def test_terminate():
+    node = GateNode(nodes[0], [nodes[1], nodes[2]], visitor_repository)
+
+    assert list(node.process_message(LocalMessage('terminate'))) == \
+        [NetworkMessage('terminated', nodes[0], nodes[1]),
+            NetworkMessage('terminated', nodes[0], nodes[2]),
+            None]
+
+def test_terminated():
+    node = GateNode(nodes[0], [nodes[1], nodes[2]], visitor_repository)
+
+    assert list(node.process_message(NetworkMessage('terminated', nodes[1], nodes[0]))) == []
+    assert node.neighbours == [nodes[2]]
+    
