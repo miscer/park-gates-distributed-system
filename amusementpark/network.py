@@ -27,7 +27,7 @@ class Network:
 
         while True:
             connection, address = server.accept()
-            connection.setsockopt(socket.SOL_TCP, socket.TCP_NODELAY, 1)
+            connection.setsockopt(socket.SOL_TCP, socket.TCP_NODELAY, 1) # send all data immediately
 
             _, port = address
             log.debug('Network %d receive connection from %d' % (self.port, port))
@@ -61,7 +61,7 @@ class Network:
     def get_connection(self, node):
         if node not in self.connections:
             connection = socket.create_connection(node.address, timeout=10)
-            connection.setsockopt(socket.SOL_TCP, socket.TCP_NODELAY, 1)
+            connection.setsockopt(socket.SOL_TCP, socket.TCP_NODELAY, 1) # send all data immediately
 
             self.connections[node] = connection
 
@@ -80,17 +80,21 @@ def serialize_message(message):
 INT_BYTE_LENGTH = 4
 
 def send_data(connection, data_buffer):
+    # first send the size of the data as a 4-byte integer, then send the data
     size_buffer = len(data_buffer).to_bytes(INT_BYTE_LENGTH, byteorder='big')
     connection.sendall(size_buffer + data_buffer)
 
 def receive_data(connection):
+    # first read four bytes from the socket
     size_buffer = bytes()
 
     while len(size_buffer) < INT_BYTE_LENGTH:
         size_buffer += connection.recv(INT_BYTE_LENGTH - len(size_buffer))
     
+    # then decode it into an integer specifying the size of the data in bytes
     size = int.from_bytes(size_buffer, byteorder='big')
 
+    # read the specified amount of bytes
     data_buffer = bytes()
     
     while len(data_buffer) < size:

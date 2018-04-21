@@ -1,24 +1,27 @@
 from amusementpark.messages import NetworkMessage
 
 class GateNode:
-    STATE_IDLE = 'idle'
-    STATE_INITIATED = 'initiated'
-    STATE_ELECTING = 'electing'
-    STATE_WAITING = 'waiting'
+    STATE_IDLE = 'idle' # no election is in progress
+    STATE_INITIATED = 'initiated' # this node started the election
+    STATE_ELECTING = 'electing' # waiting for child nodes to respond
+    STATE_WAITING = 'waiting' # waiting for the leader to be announced
 
     def __init__(self, info, neighbours, repository):
         self.info = info
         self.neighbours = neighbours
         self.repository = repository
 
+        # state attributes related to elections
         self.state = GateNode.STATE_IDLE
-        self.parent = None
-        self.leader = None
-        self.answers = {}
+        self.parent = None # parent node during election
+        self.leader = None # leader node
+        self.answers = {} # answers from child nodes
 
-        self.mutex_holder = None
-        self.mutex_queue = []
+        # state attributes related to mutual exclusion
+        self.mutex_holder = None # node currently holding the mutex
+        self.mutex_queue = [] # nodes waiting for mutex to be released
 
+        # state attributes related to enter/leave requests
         self.mutex_requested = False
         self.enter_queue = []
         self.leave_queue = []
@@ -89,7 +92,7 @@ class GateNode:
             for neighbour in self.neighbours:
                 yield NetworkMessage('terminated', self.info, neighbour)
             
-            yield None
+            yield None # no more messages will be sent by this node
         else:
             self.handle_error('Unexpected state')
     
@@ -108,6 +111,7 @@ class GateNode:
                 yield NetworkMessage('election_started', self.info, child)
             
             if self.has_all_answers():
+                # in this case there are no children for this node, so it votes for itself as the leader
                 self.state = GateNode.STATE_WAITING
                 yield NetworkMessage('election_voted', self.info, message.sender, leader=self.info)
         
@@ -123,13 +127,13 @@ class GateNode:
         if self.state in (GateNode.STATE_ELECTING, GateNode.STATE_INITIATED):
             self.answers[message.sender] = leader
 
-            if self.has_all_answers():
-                leader = self.get_best_answer()
+            if self.has_all_answers(): # all children have responded now
+                leader = self.get_best_answer() # select the leader
 
-                if self.state == GateNode.STATE_ELECTING:
+                if self.state == GateNode.STATE_ELECTING: # this is an intermediate node
                     self.state = GateNode.STATE_WAITING
                     yield NetworkMessage('election_voted', self.info, self.parent, leader=leader)
-                else:
+                else: # this is the node which started the election
                     self.state = GateNode.STATE_IDLE
                     self.leader = leader
                     
@@ -166,7 +170,7 @@ class GateNode:
         if self.mutex_holder != message.sender:
             self.handle_error('Invalid sender')
         
-        if self.mutex_queue:
+        if self.mutex_queue: # some nodes are waiting in the queue
             self.mutex_holder = self.mutex_queue.pop(0)
             yield NetworkMessage('mutex_granted', self.info, self.mutex_holder)
         else:
@@ -196,14 +200,14 @@ class GateNode:
             try:
                 state.enter(entering_node.id)
                 yield NetworkMessage('enter_response', self.info, entering_node, allowed=True)
-            except AssertionError:
+            except AssertionError: # if node cannot enter
                 yield NetworkMessage('enter_response', self.info, entering_node, allowed=False)
         
         for leaving_node in self.leave_queue:
             try:
                 state.leave(leaving_node.id)
                 yield NetworkMessage('leave_response', self.info, leaving_node, allowed=True)
-            except AssertionError:
+            except AssertionError: # if node cannot leave
                 yield NetworkMessage('leave_response', self.info, leaving_node, allowed=False)
         
         self.repository.write_state(state)
@@ -215,7 +219,7 @@ class GateNode:
         yield NetworkMessage('mutex_released', self.info, self.leader)
     
     def process_leader_removed(self, message):
-        if self.leader is None:
+        if self.leader is None: # leader was already removed by a previous message
             return
         
         self.leader = None
@@ -248,6 +252,7 @@ class GateNode:
             if self.answers[child] is not None
         ]
 
+        # select node with the highest capacity
         return max(child_answers + [self.info], key=lambda node: node.capacity)
     
     def handle_error(self, message):

@@ -1,10 +1,10 @@
 from amusementpark.messages import NetworkMessage
 
 class VisitorNode:
-    STATE_IDLE = 'idle'
-    STATE_ENTERING = 'entering'
-    STATE_ENTERED = 'entered'
-    STATE_LEAVING = 'leaving'
+    STATE_IDLE = 'idle' # no task is in progress
+    STATE_ENTERING = 'entering' # waiting for enter response
+    STATE_ENTERED = 'entered' # received enter response allowing the entry
+    STATE_LEAVING = 'leaving' # waiting for leave response
 
     def __init__(self, info):
         self.info = info

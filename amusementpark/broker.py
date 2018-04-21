@@ -8,6 +8,10 @@ from amusementpark.messages import NetworkMessage, LocalMessage
 log = logging.getLogger('amusementpark.broker')
 
 class Broker:
+    """
+    Broker routes incoming messages to a node and collects produced outgoing messages.
+    """
+
     def __init__(self, node):
         self.node = node
         self.incoming_messages = Queue()
@@ -25,6 +29,7 @@ class Broker:
             self.log_incoming_message(incoming_message)
             
             for outgoing_message in self.node.process_message(incoming_message):
+                # if outgoing message is None it means the node will not send any more messages
                 if outgoing_message is not None:
                     self.log_outgoing_message(outgoing_message)
                     self.outgoing_messages.put(outgoing_message)
@@ -33,12 +38,15 @@ class Broker:
                     return
     
     def add_incoming_message(self, message):
+        # add the message to the incoming message queue
         self.incoming_messages.put(message)
     
     def get_outgoing_message(self, block=True):
+        # pop the first message from the outgoing message queue
         return self.outgoing_messages.get(block=block)
     
     def finish_outgoing_message(self):
+        # mark an outgoing message as processed
         self.outgoing_messages.task_done()
     
     def log_incoming_message(self, message):
