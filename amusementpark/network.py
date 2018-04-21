@@ -33,16 +33,14 @@ class Network:
             self.broker.add_incoming_message(message)
 
     def send_messages(self):
-        queue = self.broker.get_outgoing_messages()
-
         while True:
-            message = queue.get()
+            message = self.broker.get_outgoing_message()
             
             connection = self.get_connection(message.recipient)
             data = serialize_message(message)
             connection.sendall(data)
             
-            queue.task_done()
+            self.broker.finish_outgoing_message()
     
     def get_connection(self, node):
         if node not in self.connections:

@@ -1,7 +1,9 @@
-from queue import Queue
+from queue import PriorityQueue
 from threading import Thread
 from collections import defaultdict
+import time
 import logging
+
 from amusementpark.messages import NetworkMessage, LocalMessage
 
 log = logging.getLogger('amusementpark.broker')
@@ -10,8 +12,8 @@ class Broker:
     END = 'end'
 
     def __init__(self):
-        self.incoming_messages = Queue()
-        self.outgoing_messages = Queue()
+        self.incoming_messages = PriorityQueue()
+        self.outgoing_messages = PriorityQueue()
     
     def run(self, node):
         thread = Thread(target=self.process_messages, args=(node,))
@@ -20,7 +22,7 @@ class Broker:
     
     def process_messages(self, node):
         while True:
-            incoming_message = self.incoming_messages.get()
+            _, incoming_message = self.incoming_messages.get()
 
             if incoming_message == Broker.END:
                 break
@@ -29,15 +31,19 @@ class Broker:
             
             for outgoing_message in node.process_message(incoming_message):
                 self.log_outgoing_message(node, outgoing_message)
-                self.outgoing_messages.put(outgoing_message)
+                self.outgoing_messages.put((time.time(), outgoing_message))
         
         self.log_end(node)
     
     def add_incoming_message(self, message):
-        self.incoming_messages.put(message)
+        self.incoming_messages.put((time.time(), message))
     
-    def get_outgoing_messages(self):
-        return self.outgoing_messages
+    def get_outgoing_message(self, block=True):
+        _, message = self.outgoing_messages.get(block=block)
+        return message
+    
+    def finish_outgoing_message(self):
+        self.outgoing_messages.task_done()
     
     def log_incoming_message(self, node, message):
         if isinstance(message, LocalMessage):

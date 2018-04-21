@@ -35,7 +35,6 @@ def test_passing_messages():
     thread = broker.run(node)
     thread.join()
 
-    outgoing_messages = broker.get_outgoing_messages()
-    assert outgoing_messages.get(block=False) == out_message_1
-    assert outgoing_messages.get(block=False) == out_message_2
-    assert outgoing_messages.get(block=False) == out_message_3
+    assert broker.get_outgoing_message(block=False) == out_message_1
+    assert broker.get_outgoing_message(block=False) == out_message_2
+    assert broker.get_outgoing_message(block=False) == out_message_3
