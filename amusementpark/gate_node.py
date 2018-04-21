@@ -90,6 +90,10 @@ class GateNode:
 
             for child in self.get_children():
                 yield NetworkMessage('election_started', self.info, child)
+            
+            if self.has_all_answers():
+                self.state = GateNode.STATE_WAITING
+                yield NetworkMessage('election_voted', self.info, message.sender, leader=self.info)
         
         elif self.state in (GateNode.STATE_ELECTING, GateNode.STATE_INITIATED):
             yield NetworkMessage('election_voted', self.info, message.sender, leader=None)

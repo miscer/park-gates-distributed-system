@@ -55,6 +55,15 @@ def test_another_election_message(visitor_repository):
     assert node.state == GateNode.STATE_ELECTING
     assert node.parent == nodes[1]
 
+def test_election_start_without_children(visitor_repository):
+    node = GateNode(nodes[0], [nodes[1]], visitor_repository)
+
+    assert list(node.process_message(NetworkMessage('election_started', nodes[1], nodes[0]))) == \
+        [NetworkMessage('election_voted', nodes[0], nodes[1], leader=nodes[0])]
+    
+    assert node.state == GateNode.STATE_WAITING
+    assert node.parent == nodes[1]
+
 def test_first_ack(visitor_repository):
     node = GateNode(nodes[0], [nodes[1], nodes[2], nodes[3]], visitor_repository)
     node.state = GateNode.STATE_INITIATED
