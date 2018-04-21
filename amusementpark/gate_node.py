@@ -125,7 +125,7 @@ class GateNode:
         if self.mutex_holder is None:
             self.handle_error('No mutex holder')
 
-        if self.mutex_holder is not message.sender:
+        if self.mutex_holder != message.sender:
             self.handle_error('Invalid sender')
         
         if self.mutex_queue:
@@ -170,6 +170,7 @@ class GateNode:
         
         self.repository.write_state(state)
         
+        self.mutex_requested = False
         self.enter_queue = []
         self.leave_queue = []
         
