@@ -58,7 +58,7 @@ class GateNode:
             for neighbour in self.neighbours:
                 yield NetworkMessage('election_started', self.info, neighbour)
         else:
-            raise Exception('Unexpected state')
+            self.handle_error('Unexpected state')
     
     def process_hello(self, message):
         yield NetworkMessage('hey', self.info, message.sender)
@@ -67,6 +67,7 @@ class GateNode:
         if self.state == GateNode.STATE_IDLE:
             self.state = GateNode.STATE_ELECTING
             self.parent = message.sender
+            self.leader = None
 
             for child in self.get_children():
                 yield NetworkMessage('election_started', self.info, child)
@@ -75,7 +76,7 @@ class GateNode:
             yield NetworkMessage('election_voted', self.info, message.sender, leader=None)
 
         else:
-            raise Exception('Unexpected state')
+            self.handle_error('Unexpected state')
     
     def process_election_voted(self, message):
         leader = message.payload['leader']
@@ -96,7 +97,7 @@ class GateNode:
                     for neighbour in self.neighbours:
                         yield NetworkMessage('election_finished', self.info, neighbour, leader=leader)
         else:
-            raise Exception('Unexpected state')
+            self.handle_error('Unexpected state')
 
     def process_election_finished(self, message):
         leader = message.payload['leader']
@@ -104,6 +105,7 @@ class GateNode:
         if self.state == GateNode.STATE_WAITING:
             self.state = GateNode.STATE_IDLE
             self.leader = leader
+            self.parent = None
 
             for neighbour in self.neighbours:
                 if neighbour != message.sender:
@@ -118,13 +120,13 @@ class GateNode:
             
     def process_mutex_released(self, message):
         if self.leader != self.info:
-            raise Exception('Not a leader')
+            self.handle_error('Not a leader')
 
         if self.mutex_holder is None:
-            raise Exception('No mutex holder')
+            self.handle_error('No mutex holder')
 
         if self.mutex_holder is not message.sender:
-            raise Exception('Invalid sender')
+            self.handle_error('Invalid sender')
         
         if self.mutex_queue:
             self.mutex_holder = self.mutex_queue.pop(0)
@@ -148,7 +150,7 @@ class GateNode:
     
     def process_mutex_granted(self, message):
         if not self.mutex_requested:
-            raise Exception('Mutex not requested')
+            self.handle_error('Mutex not requested')
         
         state = self.repository.read_state()
         
@@ -179,7 +181,7 @@ class GateNode:
         elif self.state == GateNode.STATE_ELECTING:
             return [child for child in self.neighbours if child != self.parent]
         else:
-            raise Exception('Unexpected state')
+            self.handle_error('Unexpected state')
     
     def has_all_answers(self):
         return all(child in self.answers for child in self.get_children())
@@ -192,6 +194,9 @@ class GateNode:
         ]
 
         return max(child_answers + [self.info], key=lambda node: node.capacity)
+    
+    def handle_error(self, message):
+        raise Exception('Node %s: %s' % (self, message))
     
     def __str__(self):
         return '%d/%s' % (self.info.id, self.state)
