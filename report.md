@@ -3,6 +3,7 @@ title: CS4103 Practical 2
 date: 23 April 2018
 author: 140015533
 toc: true
+geometry: margin=1in
 ---
 
 # Introduction
@@ -11,7 +12,7 @@ In this practical I implement a simple distributed system for controlling entran
 
 In my implementation, there are two types of nodes: gates and visitors. Gates control access to the park and one of the gates may be the leader. Gate nodes form a network as described in the practical specification. Visitor nodes connect to the gate nodes and request permission to enter or exit the park.
 
-I completed all three parts of the specification: the gate nodes in the system form a network and communicate over TCP sockets. The user can manually instruct any gate node to start an election using the wireless algorithm. Once the leader is elected, visitor nodes can connect to gate nodes to request entry or exit from the park. The gate node obtains a permission from the leader to access and modify a shared file and informs the visitor node whether the entry or exit is allowed.
+I completed all three parts of the specification: the gate nodes in the system form a network and communicate over TCP sockets. The user can manually instruct any gate node to start an election using the wireless algorithm. Once the leader is elected, visitor nodes can connect to gate nodes to request entry or exit from the park. Gate node obtains a permission from the leader to access and modify a shared file and informs the visitor node whether the entry or exit is allowed.
 
 The system is implemented in Python. I used only the Python standard library for the implementation and the pytest library for unit tests.
 
@@ -25,7 +26,7 @@ First, all communication in the system is done through messages. There are two t
 
 * Local messages are manually sent by the user directly to a node. These are for instructing the system to perform some action
 
-* Network messages are sent between the nodes in the system over the network. These are used for communication in the system.
+* Network messages are sent between the nodes in the system over the network.
 
 Each message has a type and can carry a payload, which is a dictionary with arbitrary keys and values. Network messages also include the sender and the receiver node identification.
 
@@ -57,7 +58,7 @@ The shared resource in the system is implemented as a single file that all nodes
 
 The number of visitors is not stored, as it can be obtained simply by counting the values in the visitor ID list.
 
-Contents of this file and the system state are represented by the `State` class, which has two methods, `enter` and `leave` which check pre-conditions for entering and leaving the park and update the visitor list accordingly.
+Contents of this file and the system state are represented by the `State` class, which has two methods, `enter` and `leave`. These check pre-conditions for entering and leaving the park and update the visitor list accordingly.
 
 The access to the file is implemented through the `Repository` class, which has methods for reading, writing and destroying the state. It implements accessing the file and serialising and parsing the state.
 
@@ -73,13 +74,13 @@ By having a broker class, the exact implementation of the communication between 
 
 * and monitor the outgoing message queue in the broker, create connections to other nodes and send the messages.
 
-The messages are encoded and decoded using the `pickle` module which can encode any Python object using binary encoding. I tried using JSON for encoding, but there were issues with encoding and decoding custom data types, such as `NodeInfo`. Additionally, when sending a message through a socket, it is prefixed with its size encoded as a 4-byte integer. This is needed for the receiver to know how many bytes it needs to read from the socket. Without this, I encountered issues where from two received messages only the first one was decoded correctly.
+The messages are encoded and decoded using the `pickle` module, which can encode any Python object using binary encoding. I tried using JSON for encoding, but there were issues with encoding and decoding custom data types, such as `NodeInfo`. Additionally, when sending a message through a socket, it is prefixed with its size encoded as a 4-byte integer. This is needed for the receiver to know how many bytes it needs to read from the socket. Without this, I encountered issues where from two consecutive received messages only the first one was decoded correctly.
 
 There are two sockets between nodes -- one for each direction of communication. A new thread is started for the server, for each incoming connection, and for sending messages.
 
 ## Election Algorithm
 
-The system uses the wireless algorithm as it was described in the lectures. Each node has the IDs and addresses of its neighbouring nodes.
+The system uses the wireless algorithm as it was described in the lectures. Each node knows the IDs and addresses of its neighbouring nodes.
 
 Election starts with the user instructing one of the gate nodes to send out the `election_started` message to its neighbours. When a node receives the `election_started` message, it sends it to its neighbours, except for the node from which it received the message. If it receives another `election_started` message, it responds with an empty `election_voted` message. Each node waits for its neighbours to send back an `election_voted` message, which can contain the `NodeInfo` of the potential leader. The node then selects the best candidate for the leader based on their capacity and sends another `election_voted` message to its parent node. When the node which started the election receives responses from all its neighbours, it selects the leader and sends out the `election_finished` message to the neighbours. These forward the messages to more nodes, eventually flooding the whole network. At this point the election is finished and each node knows the ID and the address of the leader.
 
@@ -91,7 +92,7 @@ Node that is not a leader can leave the network by sending the `terminated` mess
 
 ## Mutual Exclusion
 
-The leader node manages access to a shared resource using a simple mutex. The mutex can be obtained by any node by sending the `mutex_requested` message to the leader node. If the mutex is not currently held by any node, the leader sends back `mutex_granted`. If it is held, it adds the requesting node to a FIFO queue. Once the first node releases the mutex with a `mutex_released` message, the next node in the queue is granted the mutex.
+The leader node manages access to a shared resource using a simple mutex. The mutex can be obtained by any node by sending the `mutex_requested` message to the leader node. If the mutex is not currently held by any node, the leader sends back a `mutex_granted` message. If it is held, it adds the requesting node to a FIFO queue. Once the first node releases the mutex with a `mutex_released` message, the next node in the queue is granted the mutex.
 
 ## Entering and Leaving
 
@@ -122,10 +123,13 @@ Node 694/electing receive from 166: election_started {}
 Node 220/electing receive from 696: election_voted {'leader': None}
 Node 694/electing send to 166: election_voted {'leader': None}
 Node 694/electing receive from 166: election_voted {'leader': None}
-Node 220/waiting send to 166: election_voted {'leader': NodeInfo(id=220, address=('localhost', 60509), capacity=7)}
+Node 220/waiting send to 166: election_voted
+  {'leader': NodeInfo(id=220, address=('localhost', 60509), capacity=7)}
 ...
-Node 696/idle receive from 742: election_finished {'leader': NodeInfo(id=156, address=('localhost', 60504), capacity=9)}
-Node 742/idle receive from 696: election_finished {'leader': NodeInfo(id=156, address=('localhost', 60504), capacity=9)}
+Node 696/idle receive from 742: election_finished
+  {'leader': NodeInfo(id=156, address=('localhost', 60504), capacity=9)}
+Node 742/idle receive from 696: election_finished
+  {'leader': NodeInfo(id=156, address=('localhost', 60504), capacity=9)}
 ```
 
 ## Removing a Leader
@@ -161,12 +165,13 @@ Node 742/idle receive from 696: terminated {}
 
 ## Entering the Park
 
-Visitor node is created and instructed to connect to a random gate and sned an enter request. The gate requests a mutex from the leader, updates the state (shown below), allows the visitor to enter and releases the mutex.
+Visitor node is created and instructed to connect to a random gate and send an enter request. The gate requests a mutex from the leader, updates the state (shown below), allows the visitor to enter and releases the mutex.
 
 ```
 >>> visitor = create_visitor()
 >>> enter_park(visitor)
-Node 2000/idle receive local message: enter_park {'gate': NodeInfo(id=694, address=('localhost', 60507), capacity=4)}
+Node 2000/idle receive local message: enter_park
+  {'gate': NodeInfo(id=694, address=('localhost', 60507), capacity=4)}
 Node 2000/idle send to 694: enter_request {}
 Node 694/idle receive from 2000: enter_request {}
 Node 694/idle send to 156: mutex_requested {}
@@ -189,7 +194,8 @@ Leaving the park works similarly to entering the park.
 
 ```
 >>> leave_park(visitor)
-Node 2000/entered receive local message: leave_park {'gate': NodeInfo(id=220, address=('localhost', 60509), capacity=7)}
+Node 2000/entered receive local message: leave_park
+  {'gate': NodeInfo(id=220, address=('localhost', 60509), capacity=7)}
 Node 2000/entered send to 220: leave_request {}
 Node 220/idle receive from 2000: leave_request {}
 Node 220/idle send to 156: mutex_requested {}
@@ -211,13 +217,16 @@ Since we can use any Python code in the command line interface, we can instruct 
 >>> visitors = [create_visitor() for _ in range(20)]
 >>> for visitor in visitors:
 ...     enter_park(visitor)
-INFO:amusementpark.broker:Node 2000/idle receive local message: enter_park {'gate': NodeInfo(id=615, address=('localhost', 49924), capacity=2)}
+INFO:amusementpark.broker:Node 2000/idle receive local message: enter_park
+  {'gate': NodeInfo(id=615, address=('localhost', 49924), capacity=2)}
 INFO:amusementpark.broker:Node 2000/idle send to 615: enter_request {}
 ...
 INFO:amusementpark.broker:Node 908/idle send to 294: mutex_granted {}
 INFO:amusementpark.broker:Node 294/idle receive from 908: mutex_granted {}
-INFO:amusementpark.broker:Node 294/idle send to 2007: enter_response {'allowed': True}
-INFO:amusementpark.broker:Node 294/idle send to 2002: enter_response {'allowed': True}
+INFO:amusementpark.broker:Node 294/idle send to 2007: enter_response
+  {'allowed': True}
+INFO:amusementpark.broker:Node 294/idle send to 2002: enter_response
+  {'allowed': True}
 INFO:amusementpark.broker:Node 294/idle send to 908: mutex_released {}
 ...
 ```
@@ -256,13 +265,13 @@ I implemented all three parts as specified in the practical specification. The s
 
 My implementation is tested using unit and integration tests. However, more automated integration tests could be implemented, for example to test entering and leaving the park.
 
-All nodes run in the same process, but they do not share any memory -- they could be started as different processes and the system would still work. This is achieved by using only TCP sockets for communication between nodes. The current implementation would not work when run on different machines, as the shared resource is implemented using a file.
+All nodes run in the same process, but they do not share any memory -- they could be started as different processes and the system would still work. This is achieved by using only TCP sockets for communication between nodes. The current implementation would not work when it is started on different machines, as the shared resource is implemented using a file.
 
 Error handling in the nodes could be improved. At the moment, when an error occurs, the thread running the node simply crashes, but the rest of the system keeps running. A single failure will most likely render the system unusable, as there is no fault tolerance built in, except for manually terminating nodes. For instance, if a node crashes during the election, the election will never finish.
 
 # Conclusion
 
-My task in this practical was to implement a simple distributed system for controlling the entry and exit gates in an amusement park. The system uses TCP sockets to communicate between the gate and visitor nodes. A leader node can be elected and then used by other nodes to control mutual exclusion on access to a shared resource, which contains the list of all visitors who are currently in the park.
+My task in this practical was to implement a simple distributed system for controlling the entry and exit gates in an amusement park. The system uses TCP sockets to communicate between the gate and visitor nodes. A leader node can be elected and then used by other nodes to control mutual exclusion on access to a shared resource, which contains the list of all visitors who are currently in the park. Visitor nodes connect to gate nodes and ask for permission to enter or leave the park. The functionality of the system is thoroughly checked with unit and integration tests.
 
 This practical enforced my knowledge in designing and implementing simple distributed algorithms. I improved my experience with using raw TCP sockets to implement communication, and using threads and queues to build concurrent systems. I enjoyed working on this practical, as the task was challenging and interesting.
 
